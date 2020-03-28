@@ -20,7 +20,6 @@ def main():
     size=1,
   )
   order_id = degiro.order_make(order)
-  print(pretty_json(order_id))
   print('Cancel order')
   degiro.order_cancel(order_id)
 

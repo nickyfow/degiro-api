@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from .utils import pretty_json
 from .client_info import ClientInfo
 from .product import Product
+from .order import Order
 
 class DeGiro:
   __LOGIN_URL           = 'https://trader.degiro.nl/login/secure/login'
@@ -19,7 +20,8 @@ class DeGiro:
 
   __GET_REQUEST = 0
   __POST_REQUEST = 1
-  __SPECIAL_REQUEST = 2
+  __DELETE_REQUEST = 2
+  __SPECIAL_REQUEST = 3
 
   def __init__(self):
     self.logger = logging.getLogger(self.__class__.__name__)
@@ -29,6 +31,8 @@ class DeGiro:
       response = requests.get(url, params=payload)
     elif request_type == DeGiro.__POST_REQUEST:
       response = requests.post(url, json=payload)
+    elif request_type == DeGiro.__DELETE_REQUEST:
+      response = requests.delete(url)
     elif request_type == DeGiro.__SPECIAL_REQUEST:
       response = requests.get(url, json=payload,
         headers={ 'Cookie': 'JSESSIONID=' + str(self.session_id) }
@@ -41,6 +45,59 @@ class DeGiro:
     self.logger.debug(pretty_json(response.json()))
     return response.json()
 
+  def order_cancel(self, orderId):
+    # Check order before submitting it
+    payload = {
+      'intAccount': self.client_info.account_id,
+      'sessionId': self.session_id,
+    }
+    res = self.__request(
+      self.urls['tradingUrl']
+        + 'v5/order/' + orderId + ';jsessionid=' + self.session_id
+        + '?' + urllib.parse.urlencode(payload),
+      {},
+      request_type=DeGiro.__DELETE_REQUEST,
+      error_message='Could not confirm order.'
+    )
+    return res
+
+  def order_check(self, order):
+    # Check order before submitting it
+    payload = {
+      'intAccount': self.client_info.account_id,
+      'sessionId': self.session_id,
+    }
+    res = self.__request(
+      self.urls['tradingUrl']
+        + 'v5/checkOrder;jsessionid=' + self.session_id
+        + '?' + urllib.parse.urlencode(payload),
+      order.to_dict(),
+      request_type=DeGiro.__POST_REQUEST,
+      error_message='Could not check order.'
+    )
+    return res
+
+  def order_confirm(self, order, confirmationId):
+    # Check order before submitting it
+    payload = {
+      'intAccount': self.client_info.account_id,
+      'sessionId': self.session_id,
+    }
+    res = self.__request(
+      self.urls['tradingUrl']
+        + 'v5/order/' + confirmationId + ';jsessionid=' + self.session_id
+        + '?' + urllib.parse.urlencode(payload),
+      order.to_dict(),
+      request_type=DeGiro.__POST_REQUEST,
+      error_message='Could not confirm order.'
+    )
+    return res
+
+  def order_make(self, order):
+    # Check, then confirm order
+    confirmationId = self.order_check(order)['data']['confirmationId']
+    return self.order_confirm(order, confirmationId)['data']['orderId']
+
   def get_products_by_ids(self, product_ids):
     # Get trading url from the broker
     payload = {
@@ -48,7 +105,8 @@ class DeGiro:
       'sessionId': self.session_id,
     }
     res = self.__request(
-      self.urls['productSearchUrl'] + 'v5/products/info?'
+      self.urls['productSearchUrl']
+        + 'v5/products/info?'
         + urllib.parse.urlencode(payload),
       product_ids,
       request_type=DeGiro.__POST_REQUEST,
@@ -66,7 +124,7 @@ class DeGiro:
       payload,
       request_type=DeGiro.__SPECIAL_REQUEST,
       error_message='Could not get config.'
-    )
+    )['data']
     self.urls = {
       'productSearchUrl': res['productSearchUrl'],
       'tradingUrl': res['tradingUrl']
@@ -89,16 +147,13 @@ class DeGiro:
   def portfolio(self):
     # Return portfolio
     # Note: includes liquidity funds and cash
-    payload = {
-      'intAccount': self.client_info.account_id,
-      'sessionId': self.session_id,
+    data = {
       'portfolio': 0,
     }
-    res = self.__request(
-      self.urls['tradingUrl'] + 'v5/update/'
-        + str(self.client_info.account_id)
+    res = self.__request(self.urls['tradingUrl']
+        + 'v5/update/' + str(self.client_info.account_id)
         + ';jsessionid=' + str(self.session_id),
-      payload,
+      data,
       error_message='Could not get portfolio.'
     )
     # Skip inactive products

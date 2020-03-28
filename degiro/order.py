@@ -1,6 +1,15 @@
 import json
 
 class Order:
+  # Properties: Provide these in constructor
+  #buySell = BuySell
+  #orderType = Type
+  #productId = int
+  #timeType = TimeType
+  #size = int
+  #price = float # optional
+  #stopPrice = float # optional
+
   class BuySell:
     BUY = 'BUY'
     SELL = 'SELL'
@@ -22,15 +31,6 @@ class Order:
   class TimeType:
     DAY = 1
     PERMANENT = 3
-
-  # Properties: Provide these in constructor
-  #buySell = BuySell
-  #orderType = Type
-  #productId = int
-  #timeType = TimeType
-  #size = int
-  #price = float # optional
-  #stopPrice = float # optional
 
   # Order constructor
   def __init__(self, **kwargs):

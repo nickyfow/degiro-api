@@ -129,6 +129,7 @@ class DeGiro:
       'productSearchUrl': res['productSearchUrl'],
       'tradingUrl': res['tradingUrl']
     }
+    return res
 
   def login(self, username, password):
     login_payload = {
@@ -165,6 +166,31 @@ class DeGiro:
       ]
     ]
     return ret
+
+  def find_nasdaq_symbol(self, symbol):
+    # Return info for given symbol (NASDAQ)
+    # throw error if zero, or more than one found
+    url_params = {
+      'intAccount': self.client_info.account_id,
+      'sessionId': self.session_id,
+      'productType': 1, # STOCK
+      'stockListType': 'exchange',
+      'stockList': 663, # NASDAQ
+      'country': 846, # US
+      'searchText': symbol,
+      'sortColumns': 'name',
+      'sortTypes': 'asc',
+    }
+    res = self.__request(self.urls['productSearchUrl']
+        + 'v5/products/lookup?' + urllib.parse.urlencode(url_params),
+      {},
+      error_message='Could not get portfolio.'
+    )
+    if 'products' not in res or len(res['products']) == 0:
+      raise Exception(f'Could not find symbol {symbol}')
+    elif len(res['products']) > 1:
+      raise Exception(f'More than one product found for {symbol}')
+    return res['products'][0]
 
   def search_products(self, searchText, limit=7, product_types=None):
     product_search_payload = {

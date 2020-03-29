@@ -7,6 +7,7 @@ from datetime import datetime
 from examples.config import DEGIRO_USERNAME, DEGIRO_PASSWORD
 
 def main():
+  symbol = 'KGJI'
   print('This will issue a market order and then cancel it.')
   print('------')
   time.sleep(2)
@@ -18,11 +19,13 @@ def main():
   degiro = DeGiro()
   degiro.login(DEGIRO_USERNAME, DEGIRO_PASSWORD)
   degiro.init_urls()
+  print(f'Get product ID for {symbol}')
+  product_id = degiro.find_nasdaq_symbol(symbol)['id']
   print('Make order')
   order = Order(
     buySell=Order.BuySell.BUY,
     orderType=Order.Type.MARKET,
-    productId=16583624,
+    productId=product_id,
     timeType=Order.TimeType.DAY,
     size=1,
   )
